@@ -156,4 +156,12 @@ module.exports = {
   DAPP_PROVIDER_REQUEST: 'dapp:provider-request',
   DAPP_PROVIDER_RESPONSE: 'dapp:provider-response',
   DAPP_PROVIDER_EVENT: 'dapp:provider-event',
+
+  // Age Verification
+  AGE_GET_BRACKET: 'age:get-bracket',
+  AGE_GET_USER_AGE: 'age:get-user-age',
+  AGE_CHECK_VERIFICATION: 'age:check-verification',
+  AGE_AUTHENTICATE: 'age:authenticate',
+  AGE_LIST_VERIFICATIONS: 'age:list-verifications',
+  AGE_GET_STATUS: 'age:get-status',
 };

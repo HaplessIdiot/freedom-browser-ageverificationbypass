@@ -7,6 +7,7 @@ const { loadSettings } = require('./settings-store');
 const { fetchBuffer, fetchToFile } = require('./http-fetch');
 const { success, failure, validateWebContentsId } = require('./ipc-contract');
 const IPC = require('../shared/ipc-channels');
+const ageVerification = require('./age-verification');
 
 // Path to webview preload script (for internal pages)
 const webviewPreloadPath = path.join(__dirname, 'webview-preload.js');
@@ -281,6 +282,67 @@ function registerBaseIpcHandlers(callbacks = {}) {
     } catch (error) {
       log.error('[clipboard] Failed to copy image:', error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // Age Verification IPC handlers
+  ipcMain.handle(IPC.AGE_GET_BRACKET, async () => {
+    try {
+      const result = await ageVerification.getAgeBracket();
+      return result;
+    } catch (error) {
+      log.error('[age-verification] Failed to get age bracket:', error);
+      return { verified: false, status: 'error' };
+    }
+  });
+
+  ipcMain.handle(IPC.AGE_GET_USER_AGE, async () => {
+    try {
+      const result = await ageVerification.getUserAge();
+      return result;
+    } catch (error) {
+      log.error('[age-verification] Failed to get user age:', error);
+      return { ageVerified: false, status: 'error' };
+    }
+  });
+
+  ipcMain.handle(IPC.AGE_CHECK_VERIFICATION, async () => {
+    try {
+      const result = await ageVerification.checkVerification();
+      return result;
+    } catch (error) {
+      log.error('[age-verification] Failed to check verification:', error);
+      return { verified: false };
+    }
+  });
+
+  ipcMain.handle(IPC.AGE_AUTHENTICATE, async (_event, user) => {
+    try {
+      const result = await ageVerification.authenticate(user);
+      return result;
+    } catch (error) {
+      log.error('[age-verification] Failed to authenticate:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle(IPC.AGE_LIST_VERIFICATIONS, async () => {
+    try {
+      const result = await ageVerification.listVerifications();
+      return result;
+    } catch (error) {
+      log.error('[age-verification] Failed to list verifications:', error);
+      return { verifications: [] };
+    }
+  });
+
+  ipcMain.handle(IPC.AGE_GET_STATUS, async () => {
+    try {
+      const available = ageVerification.isServiceAvailable();
+      return { available };
+    } catch (error) {
+      log.error('[age-verification] Failed to get status:', error);
+      return { available: false };
     }
   });
 }

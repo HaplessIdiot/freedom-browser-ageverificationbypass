@@ -357,4 +357,71 @@ describe('ipc-handlers', () => {
       expect.any(Error)
     );
   });
+
+  test('age verification IPC handlers', async () => {
+    // Mock age verification module
+    const ageVerificationMock = {
+      getAgeBracket: jest.fn().mockResolvedValue({ verified: true, ageBracket: 'adult', status: 'verified' }),
+      getUserAge: jest.fn().mockResolvedValue({ ageVerified: true, status: 'adult', age: 25 }),
+      checkVerification: jest.fn().mockResolvedValue({ verified: true, age: 25 }),
+      authenticate: jest.fn().mockResolvedValue({ success: true, message: 'verified (null-attestation)' }),
+      listVerifications: jest.fn().mockResolvedValue({
+        verifications: [
+          { name: 'age-verification', status: 'verified' },
+          { name: 'current-user', status: 'unrestricted' },
+        ],
+      }),
+      isServiceAvailable: jest.fn().mockReturnValue(true),
+    };
+
+    const ctx = loadIpcHandlersModule({
+      ageVerification: ageVerificationMock,
+    });
+
+    // Inject the age verification module
+    ctx.mod = require('./ipc-handlers');
+    // Re-register handlers with mocked age verification
+    jest.resetModules();
+    jest.doMock('./age-verification', () => ageVerificationMock);
+    const { registerBaseIpcHandlers } = require('./ipc-handlers');
+    registerBaseIpcHandlers();
+
+    // Test AGE_GET_BRACKET
+    const bracketResult = await ctx.ipcMain.handlers.get(IPC.AGE_GET_BRACKET)();
+    expect(bracketResult).toEqual({ verified: true, ageBracket: 'adult', status: 'verified' });
+    expect(ageVerificationMock.getAgeBracket).toHaveBeenCalled();
+
+    // Test AGE_GET_USER_AGE
+    const userAgeResult = await ctx.ipcMain.handlers.get(IPC.AGE_GET_USER_AGE)();
+    expect(userAgeResult).toEqual({ ageVerified: true, status: 'adult', age: 25 });
+    expect(ageVerificationMock.getUserAge).toHaveBeenCalled();
+
+    // Test AGE_CHECK_VERIFICATION
+    const checkResult = await ctx.ipcMain.handlers.get(IPC.AGE_CHECK_VERIFICATION)();
+    expect(checkResult).toEqual({ verified: true, age: 25 });
+    expect(ageVerificationMock.checkVerification).toHaveBeenCalled();
+
+    // Test AGE_AUTHENTICATE
+    const authResult = await ctx.ipcMain.handlers.get(IPC.AGE_AUTHENTICATE)(null, 'testuser');
+    expect(authResult).toEqual({ success: true, message: 'verified (null-attestation)' });
+    expect(ageVerificationMock.authenticate).toHaveBeenCalledWith('testuser');
+
+    // Test AGE_LIST_VERIFICATIONS
+    const listResult = await ctx.ipcMain.handlers.get(IPC.AGE_LIST_VERIFICATIONS)();
+    expect(listResult).toEqual({
+      verifications: [
+        { name: 'age-verification', status: 'verified' },
+        { name: 'current-user', status: 'unrestricted' },
+      ],
+    });
+    expect(ageVerificationMock.listVerifications).toHaveBeenCalled();
+
+    // Test AGE_GET_STATUS
+    const statusResult = await ctx.ipcMain.handlers.get(IPC.AGE_GET_STATUS)();
+    expect(statusResult).toEqual({ available: true });
+    expect(ageVerificationMock.isServiceAvailable).toHaveBeenCalled();
+
+    // Clean up mocks
+    jest.resetModules();
+  });
 });
